@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}StudyHub - AI-Powered Learning Platform{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-graduation-cap me-2"></i>
+                <strong>StudyHub</strong>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'pdf_chat' %}active{% endif %}" href="{{ url_for('pdf_chat') }}">
+                            <i class="fas fa-comments me-1"></i>PDF Chat
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'summarizer' %}active{% endif %}" href="{{ url_for('summarizer') }}">
+                            <i class="fas fa-compress-alt me-1"></i>Summarizer
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'quiz_generator' %}active{% endif %}" href="{{ url_for('quiz_generator') }}">
+                            <i class="fas fa-question-circle me-1"></i>Quiz Generator
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cog me-1"></i>Settings
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="showApiStatus()">
+                                <i class="fas fa-server me-1"></i>API Status
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showHelp()">
+                                <i class="fas fa-question-circle me-1"></i>Help
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showAbout()">
+                                <i class="fas fa-info-circle me-1"></i>About
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-graduation-cap me-2"></i>StudyHub</h5>
+                    <p class="mb-0">AI-Powered Learning Platform</p>
+                    <small class="text-muted">Enhancing education through artificial intelligence</small>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0"><strong>Features:</strong></p>
+                    <small class="text-muted">PDF Chat • Content Summarizer • Quiz Generator</small>
+                    <br>
+                    <small class="text-muted">&copy; 2024 StudyHub. All rights reserved.</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div class="modal fade" id="apiStatusModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-server me-2"></i>API Status</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="apiStatusContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Checking API status...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="helpModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-question-circle me-2"></i>Help & Support</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-comments text-primary me-2"></i>PDF Chat</h6>
+                            <p class="small">Upload PDF documents and have intelligent conversations about their content.</p>
+                            <ul class="small">
+                                <li>Upload multiple PDF files</li>
+                                <li>Ask questions about content</li>
+                                <li>Get AI-powered answers</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-compress-alt text-primary me-2"></i>Summarizer</h6>
+                            <p class="small">Get intelligent summaries of YouTube videos, web articles, and text content.</p>
+                            <ul class="small">
+                                <li>YouTube video analysis</li>
+                                <li>Webpage summarization</li>
+                                <li>Text content analysis</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-question-circle text-primary me-2"></i>Quiz Generator</h6>
+                            <p class="small">Transform your study materials into interactive quizzes.</p>
+                            <ul class="small">
+                                <li>Multiple choice questions</li>
+                                <li>True/False questions</li>
+                                <li>Essay questions</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="aboutModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>About StudyHub</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>StudyHub</strong> is a comprehensive AI-powered learning platform that combines three powerful tools:</p>
+                    <ul>
+                        <li><strong>PDF Chat:</strong> Interactive conversations with your documents</li>
+                        <li><strong>Content Summarizer:</strong> AI-powered content analysis and summarization</li>
+                        <li><strong>Quiz Generator:</strong> Automatic quiz creation from your materials</li>
+                    </ul>
+                    <hr>
+                    <h6>Technologies Used:</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <ul class="small">
+                                <li>Flask (Web Framework)</li>
+                                <li>LangChain (PDF Processing)</li>
+                                <li>FAISS (Vector Search)</li>
+                            </ul>
+                        </div>
+                        <div class="col-6">
+                            <ul class="small">
+                                <li>Google Gemini (AI)</li>
+                                <li>Ollama (Local LLM)</li>
+                                <li>Bootstrap (UI)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

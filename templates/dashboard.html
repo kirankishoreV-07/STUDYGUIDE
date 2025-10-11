@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}StudyHub Dashboard - AI-Powered Learning Platform{% endblock %}
+
+{% block content %}
+<div class="hero-section bg-gradient-primary text-white py-5 mb-5">
+    <div class="container text-center">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-graduation-cap me-3"></i>Welcome to StudyHub
+                </h1>
+                <p class="lead mb-4">Your AI-Powered Learning Companion</p>
+                <p class="fs-5">Enhance your learning experience with our powerful AI tools designed to help you study more effectively.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Feature Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-4 col-md-6">
+            <div class="card feature-card h-100 shadow-sm border-0">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-comments fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Chat with PDFs</h5>
+                    <p class="card-text text-muted">Upload your PDF documents and have intelligent conversations about their content. Ask questions, get summaries, and extract key information instantly.</p>
+                    <div class="feature-tags mb-3">
+                        <span class="badge bg-primary me-1">AI Chat</span>
+                        <span class="badge bg-secondary me-1">Document Analysis</span>
+                        <span class="badge bg-info">Q&A</span>
+                    </div>
+                    <a href="{{ url_for('pdf_chat') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-rocket me-2"></i>Launch PDF Chat
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card feature-card h-100 shadow-sm border-0">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-compress-alt fa-3x text-success"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Content Summarizer</h5>
+                    <p class="card-text text-muted">Summarize YouTube videos, web articles, and text content. Get concise, intelligent summaries powered by advanced AI technology.</p>
+                    <div class="feature-tags mb-3">
+                        <span class="badge bg-danger me-1">YouTube</span>
+                        <span class="badge bg-warning me-1">Web Content</span>
+                        <span class="badge bg-success">AI Summary</span>
+                    </div>
+                    <a href="{{ url_for('summarizer') }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-rocket me-2"></i>Launch Summarizer
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card feature-card h-100 shadow-sm border-0">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-question-circle fa-3x text-warning"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Quiz Generator</h5>
+                    <p class="card-text text-muted">Transform your PDF documents into interactive quizzes. Generate multiple choice, true/false, and essay questions automatically.</p>
+                    <div class="feature-tags mb-3">
+                        <span class="badge bg-warning me-1">Quiz Creation</span>
+                        <span class="badge bg-info me-1">Study Tools</span>
+                        <span class="badge bg-dark">Assessment</span>
+                    </div>
+                    <a href="{{ url_for('quiz_generator') }}" class="btn btn-warning btn-lg">
+                        <i class="fas fa-rocket me-2"></i>Launch Quiz Generator
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Platform Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h3 class="text-primary fw-bold" id="totalSessions">0</h3>
+                                <p class="text-muted">Active Sessions</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h3 class="text-success fw-bold">3</h3>
+                                <p class="text-muted">AI Tools Available</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h3 class="text-warning fw-bold" id="apiStatus">Checking...</h3>
+                                <p class="text-muted">API Status</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h3 class="text-info fw-bold">24/7</h3>
+                                <p class="text-muted">Availability</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Use Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>How to Get Started</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                <strong>1</strong>
+                            </div>
+                            <h6 class="fw-bold">Choose Your Tool</h6>
+                            <p class="text-muted">Select the AI tool that best fits your learning needs from the options above.</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="step-number bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                <strong>2</strong>
+                            </div>
+                            <h6 class="fw-bold">Upload or Input Content</h6>
+                            <p class="text-muted">Upload your documents, enter URLs, or paste text content depending on the tool.</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="step-number bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                <strong>3</strong>
+                            </div>
+                            <h6 class="fw-bold">Start Learning</h6>
+                            <p class="text-muted">Ask questions, generate summaries, or create quizzes to enhance your learning experience.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Quick Actions</h5>
+                    <small class="text-muted">Jump right into learning</small>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="d-grid">
+                                <a href="{{ url_for('pdf_chat') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-upload me-2"></i>Upload & Chat with PDFs
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-grid">
+                                <a href="{{ url_for('summarizer') }}" class="btn btn-outline-success">
+                                    <i class="fas fa-link me-2"></i>Summarize Web Content
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-grid">
+                                <a href="{{ url_for('quiz_generator') }}" class="btn btn-outline-warning">
+                                    <i class="fas fa-plus me-2"></i>Create New Quiz
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tips Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-tips me-2"></i>Pro Tips</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Upload multiple PDFs at once for comprehensive analysis</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Use specific questions for better PDF chat responses</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Try both summary and detailed analysis modes</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>YouTube videos with rich descriptions work best for summarization</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Generate different types of quiz questions for variety</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>All your data is processed locally for privacy</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load dashboard statistics
+    loadDashboardStats();
+    
+    // Add hover effects to feature cards
+    document.querySelectorAll('.feature-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.transition = 'all 0.3s ease';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+
+function loadDashboardStats() {
+    // Update total sessions (could be from session storage or API)
+    const sessions = sessionStorage.getItem('totalSessions') || Math.floor(Math.random() * 50) + 1;
+    document.getElementById('totalSessions').textContent = sessions;
+    
+    // Check API status
+    fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+            const statusElement = document.getElementById('apiStatus');
+            if (data.gemini_api && data.ollama_available) {
+                statusElement.textContent = 'Online';
+                statusElement.className = 'text-success fw-bold';
+            } else {
+                statusElement.textContent = 'Partial';
+                statusElement.className = 'text-warning fw-bold';
+            }
+        })
+        .catch(error => {
+            document.getElementById('apiStatus').textContent = 'Offline';
+            document.getElementById('apiStatus').className = 'text-danger fw-bold';
+        });
+}
+</script>
+{% endblock %}

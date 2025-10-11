@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Content Summarizer - StudyHub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="page-header mb-4">
+            <h2><i class="fas fa-compress-alt me-2 text-success"></i>Content Summarizer</h2>
+            <p class="text-muted">Get intelligent summaries of YouTube videos, web articles, and text content powered by AI.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Input Section -->
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Content Input</h5>
+            </div>
+            <div class="card-body">
+                <form id="summarizerForm">
+                    <div class="mb-3">
+                        <label for="contentType" class="form-label">Content Type</label>
+                        <select class="form-select" id="contentType" required>
+                            <option value="">Select content type...</option>
+                            <option value="youtube">YouTube Video</option>
+                            <option value="webpage">Webpage URL</option>
+                            <option value="text">Text Content</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="urlInput" style="display: none;">
+                        <label for="contentUrl" class="form-label">URL</label>
+                        <input type="url" class="form-control" id="contentUrl" placeholder="Enter URL...">
+                        <div class="form-text">
+                            <small id="urlHelp"></small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="textInput" style="display: none;">
+                        <label for="contentText" class="form-label">Text Content</label>
+                        <textarea class="form-control" id="contentText" rows="6" placeholder="Paste your text content here..."></textarea>
+                        <div class="form-text">
+                            <small>Enter the text you want to summarize or analyze.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="outputType" class="form-label">Output Type</label>
+                        <select class="form-select" id="outputType">
+                            <option value="true">Summary (Concise)</option>
+                            <option value="false">Full Analysis (Detailed)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success" id="summarizeBtn">
+                            <i class="fas fa-magic me-2"></i>Generate Summary
+                        </button>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <div class="examples">
+                    <h6><i class="fas fa-lightbulb me-2 text-warning"></i>Examples</h6>
+                    <div class="list-group list-group-flush">
+                        <button type="button" class="list-group-item list-group-item-action small example-item" 
+                                data-type="youtube" data-content="https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+                            <i class="fab fa-youtube text-danger me-2"></i>YouTube Video
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action small example-item" 
+                                data-type="webpage" data-content="https://en.wikipedia.org/wiki/Artificial_intelligence">
+                            <i class="fas fa-globe text-primary me-2"></i>Wikipedia Article
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action small example-item" 
+                                data-type="text" data-content="Artificial intelligence (AI) is intelligence demonstrated by machines, in contrast to the natural intelligence displayed by humans and animals...">
+                            <i class="fas fa-file-text text-secondary me-2"></i>Text Content
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Summary Results</h5>
+                <div class="action-buttons" id="actionButtons" style="display: none;">
+                    <button class="btn btn-sm btn-outline-primary" onclick="copyResult()">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="downloadResult()">
+                        <i class="fas fa-download me-1"></i>Download
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" style="min-height: 500px;">
+                <div id="resultsContainer">
+                    <div class="welcome-message text-center text-muted py-5">
+                        <i class="fas fa-magic fa-3x mb-3"></i>
+                        <h5>Ready to Summarize!</h5>
+                        <p>Select your content type and input your content to get started.</p>
+                        <div class="features mt-4">
+                            <div class="row text-start">
+                                <div class="col-md-6">
+                                    <h6><i class="fab fa-youtube text-danger me-2"></i>YouTube Videos</h6>
+                                    <ul class="small text-muted">
+                                        <li>Video title and description analysis</li>
+                                        <li>Channel information extraction</li>
+                                        <li>AI-powered content insights</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-globe text-primary me-2"></i>Web Content</h6>
+                                    <ul class="small text-muted">
+                                        <li>Article and blog summarization</li>
+                                        <li>Key points extraction</li>
+                                        <li>Content structure analysis</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Processing Status Row -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div id="processingStatus" class="d-none">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-success me-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div>
+                            <strong>Processing your content...</strong>
+                            <br>
+                            <small class="text-muted" id="statusText">Analyzing content with AI...</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="errorStatus" class="d-none">
+                    <div class="alert alert-danger mb-0" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Error:</strong> <span id="errorText"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tips and Help -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-light">
+            <div class="card-body">
+                <h6><i class="fas fa-info-circle me-2 text-info"></i>Tips for Best Results</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <ul class="small mb-0">
+                            <li>Use public YouTube videos with good descriptions</li>
+                            <li>Ensure webpages are accessible and content-rich</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <ul class="small mb-0">
+                            <li>Text content should be at least a few sentences</li>
+                            <li>Choose "Summary" for quick overviews</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <ul class="small mb-0">
+                            <li>Use "Full Analysis" for detailed insights</li>
+                            <li>Processing may take 10-30 seconds</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const contentType = document.getElementById('contentType');
+    const urlInput = document.getElementById('urlInput');
+    const textInput = document.getElementById('textInput');
+    const contentUrl = document.getElementById('contentUrl');
+    const contentText = document.getElementById('contentText');
+    const urlHelp = document.getElementById('urlHelp');
+    const summarizerForm = document.getElementById('summarizerForm');
+    const summarizeBtn = document.getElementById('summarizeBtn');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const processingStatus = document.getElementById('processingStatus');
+    const errorStatus = document.getElementById('errorStatus');
+    const actionButtons = document.getElementById('actionButtons');
+    
+    let currentResult = '';
+    
+    // Content type change handler
+    contentType.addEventListener('change', function() {
+        const type = this.value;
+        
+        // Hide all inputs first
+        urlInput.style.display = 'none';
+        textInput.style.display = 'none';
+        
+        // Show appropriate input and set help text
+        if (type === 'youtube') {
+            urlInput.style.display = 'block';
+            contentUrl.placeholder = 'https://www.youtube.com/watch?v=...';
+            urlHelp.textContent = 'Enter a YouTube video URL. The video must be public.';
+        } else if (type === 'webpage') {
+            urlInput.style.display = 'block';
+            contentUrl.placeholder = 'https://example.com/article';
+            urlHelp.textContent = 'Enter a webpage URL. Works best with articles and blog posts.';
+        } else if (type === 'text') {
+            textInput.style.display = 'block';
+        }
+        
+        // Clear previous values
+        contentUrl.value = '';
+        contentText.value = '';
+    });
+    
+    // Example items
+    document.querySelectorAll('.example-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+            const content = this.getAttribute('data-content');
+            
+            contentType.value = type;
+            contentType.dispatchEvent(new Event('change'));
+            
+            if (type === 'text') {
+                contentText.value = content;
+            } else {
+                contentUrl.value = content;
+            }
+        });
+    });
+    
+    // Form submission
+    summarizerForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const type = contentType.value;
+        let content = '';
+        
+        if (!type) {
+            showError('Please select a content type.');
+            return;
+        }
+        
+        if (type === 'text') {
+            content = contentText.value.trim();
+            if (!content) {
+                showError('Please enter some text content.');
+                return;
+            }
+        } else {
+            content = contentUrl.value.trim();
+            if (!content) {
+                showError('Please enter a valid URL.');
+                return;
+            }
+        }
+        
+        const summarize = document.getElementById('outputType').value === 'true';
+        
+        // Show processing state
+        showProcessing();
+        
+        try {
+            const response = await fetch('/summarize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: type,
+                    content: content,
+                    summarize: summarize
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showResult(result.result);
+            } else {
+                showError(result.error || 'An error occurred while processing your content.');
+            }
+        } catch (error) {
+            showError('Network error. Please check your connection and try again.');
+        }
+    });
+    
+    function showProcessing() {
+        hideAllStatus();
+        processingStatus.classList.remove('d-none');
+        summarizeBtn.disabled = true;
+        summarizeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        
+        // Update status text periodically
+        const statusTexts = [
+            'Analyzing content with AI...',
+            'Extracting key information...',
+            'Generating summary...',
+            'Finalizing results...'
+        ];
+        
+        let index = 0;
+        const statusInterval = setInterval(() => {
+            document.getElementById('statusText').textContent = statusTexts[index];
+            index = (index + 1) % statusTexts.length;
+        }, 2000);
+        
+        // Store interval ID for cleanup
+        window.currentStatusInterval = statusInterval;
+    }
+    
+    function showResult(result) {
+        hideAllStatus();
+        currentResult = result;
+        
+        resultsContainer.innerHTML = `
+            <div class="result-content">
+                <div class="result-header mb-3">
+                    <h6><i class="fas fa-check-circle text-success me-2"></i>Summary Generated Successfully</h6>
+                    <small class="text-muted">Generated on ${new Date().toLocaleString()}</small>
+                </div>
+                <div class="result-text">
+                    ${result.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
+                </div>
+            </div>
+        `;
+        
+        actionButtons.style.display = 'block';
+        resetForm();
+    }
+    
+    function showError(message) {
+        hideAllStatus();
+        document.getElementById('errorText').textContent = message;
+        errorStatus.classList.remove('d-none');
+        resetForm();
+    }
+    
+    function hideAllStatus() {
+        processingStatus.classList.add('d-none');
+        errorStatus.classList.add('d-none');
+        
+        // Clear status interval
+        if (window.currentStatusInterval) {
+            clearInterval(window.currentStatusInterval);
+        }
+    }
+    
+    function resetForm() {
+        summarizeBtn.disabled = false;
+        summarizeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate Summary';
+    }
+});
+
+function copyResult() {
+    navigator.clipboard.writeText(currentResult).then(() => {
+        showToast('Result copied to clipboard!', 'success');
+    });
+}
+
+function downloadResult() {
+    const blob = new Blob([currentResult], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `summary_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    showToast('Summary downloaded!', 'success');
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close ms-2" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+function showError(message) {
+    showToast(message, 'danger');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Generator - StudyHub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="page-header mb-4">
+            <h2><i class="fas fa-question-circle me-2 text-warning"></i>Quiz Generator</h2>
+            <p class="text-muted">Transform your study materials into interactive quizzes. Generate questions automatically from PDF content.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Upload and Settings Section -->
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Quiz Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form id="quizForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="quizFiles" class="form-label">Upload Study Materials</label>
+                        <input type="file" class="form-control" id="quizFiles" name="files" multiple 
+                               accept=".pdf,.doc,.docx,.txt" required>
+                        <div class="form-text">Supported formats: PDF, DOC, DOCX, TXT</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Question Types</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="multipleChoice" 
+                                   name="question_types" value="Multiple Choice" checked>
+                            <label class="form-check-label" for="multipleChoice">
+                                <i class="fas fa-list me-1"></i>Multiple Choice
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="trueFalse" 
+                                   name="question_types" value="True/False">
+                            <label class="form-check-label" for="trueFalse">
+                                <i class="fas fa-check-circle me-1"></i>True/False
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="essay" 
+                                   name="question_types" value="Essay">
+                            <label class="form-check-label" for="essay">
+                                <i class="fas fa-edit me-1"></i>Essay Questions
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="numQuestions" class="form-label">Number of Questions</label>
+                        <select class="form-select" id="numQuestions" name="num_questions">
+                            <option value="5">5 Questions</option>
+                            <option value="10" selected>10 Questions</option>
+                            <option value="15">15 Questions</option>
+                            <option value="20">20 Questions</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-warning btn-lg" id="generateBtn">
+                            <i class="fas fa-magic me-2"></i>Generate Quiz
+                        </button>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <div class="quiz-info">
+                    <h6><i class="fas fa-info-circle me-2 text-info"></i>Generation Tips</h6>
+                    <ul class="small text-muted">
+                        <li>Upload content-rich documents for better questions</li>
+                        <li>Mix question types for variety</li>
+                        <li>Larger documents generate more diverse questions</li>
+                        <li>Processing may take 30-60 seconds</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quiz Display Section -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Generated Quiz</h5>
+                <div class="action-buttons" id="quizActions" style="display: none;">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showAnswers()">
+                        <i class="fas fa-eye me-1"></i>Show Answers
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" onclick="downloadQuiz()">
+                        <i class="fas fa-download me-1"></i>Download
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" style="min-height: 500px;">
+                <div id="quizContainer">
+                    <div class="welcome-message text-center text-muted py-5">
+                        <i class="fas fa-question-circle fa-3x mb-3"></i>
+                        <h5>Ready to Create Quizzes!</h5>
+                        <p>Upload your study materials and configure your quiz settings to get started.</p>
+                        <div class="quiz-features mt-4">
+                            <div class="row text-start">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-list text-primary me-2"></i>Multiple Choice</h6>
+                                    <p class="small text-muted">Questions with 4 options and correct answers marked.</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-check-circle text-success me-2"></i>True/False</h6>
+                                    <p class="small text-muted">Simple true or false questions with explanations.</p>
+                                </div>
+                            </div>
+                            <div class="row text-start">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-edit text-warning me-2"></i>Essay Questions</h6>
+                                    <p class="small text-muted">Open-ended questions for detailed responses.</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-download text-info me-2"></i>Export Options</h6>
+                                    <p class="small text-muted">Download as text file for offline use.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div id="generationStatus" class="d-none">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-warning me-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div>
+                            <strong>Generating your quiz...</strong>
+                            <br>
+                            <small class="text-muted" id="generationStatusText">Processing documents...</small>
+                        </div>
+                        <div class="ms-auto">
+                            <div class="progress" style="width: 200px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
+                                     role="progressbar" id="progressBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample Quiz Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-light">
+            <div class="card-body">
+                <h6><i class="fas fa-eye me-2 text-secondary"></i>Sample Quiz Preview</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="sample-question">
+                            <p class="small"><strong>1. What is the main benefit of artificial intelligence?</strong></p>
+                            <p class="small text-muted">
+                                A) Faster computation<br>
+                                B) Automated decision making<br>
+                                C) Reduced human error<br>
+                                D) All of the above ✓
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="sample-question">
+                            <p class="small"><strong>2. Machine learning requires large datasets. (True/False)</strong></p>
+                            <p class="small text-muted">
+                                <strong>Answer:</strong> True<br>
+                                <em>Explanation: Machine learning algorithms typically require substantial amounts of data to train effectively.</em>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentQuestions = '';
+let currentAnswers = '';
+let showingAnswers = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const quizForm = document.getElementById('quizForm');
+    const generateBtn = document.getElementById('generateBtn');
+    const quizContainer = document.getElementById('quizContainer');
+    const generationStatus = document.getElementById('generationStatus');
+    const quizActions = document.getElementById('quizActions');
+    
+    quizForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const files = document.getElementById('quizFiles').files;
+        const questionTypes = Array.from(document.querySelectorAll('input[name="question_types"]:checked'))
+                                   .map(cb => cb.value);
+        
+        // Validation
+        if (!files.length) {
+            showError('Please select at least one file.');
+            return;
+        }
+        
+        if (!questionTypes.length) {
+            showError('Please select at least one question type.');
+            return;
+        }
+        
+        // Show generation status
+        showGenerationProgress();
+        
+        try {
+            const response = await fetch('/generate-quiz', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                displayQuiz(result.questions, result.answers);
+            } else {
+                showError(result.error || 'Failed to generate quiz.');
+            }
+        } catch (error) {
+            showError('Network error. Please check your connection and try again.');
+        } finally {
+            hideGenerationProgress();
+        }
+    });
+});
+
+function showGenerationProgress() {
+    generationStatus.classList.remove('d-none');
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    
+    // Simulate progress
+    let progress = 0;
+    const progressBar = document.getElementById('progressBar');
+    const statusText = document.getElementById('generationStatusText');
+    
+    const progressMessages = [
+        'Processing documents...',
+        'Extracting content...',
+        'Analyzing text...',
+        'Generating questions...',
+        'Creating answers...',
+        'Finalizing quiz...'
+    ];
+    
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        
+        progressBar.style.width = progress + '%';
+        statusText.textContent = progressMessages[Math.floor(progress / 15)] || 'Finalizing quiz...';
+    }, 1000);
+    
+    window.currentProgressInterval = progressInterval;
+}
+
+function hideGenerationProgress() {
+    generationStatus.classList.add('d-none');
+    generateBtn.disabled = false;
+    generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate Quiz';
+    
+    if (window.currentProgressInterval) {
+        clearInterval(window.currentProgressInterval);
+    }
+}
+
+function displayQuiz(questions, answers) {
+    currentQuestions = questions;
+    currentAnswers = answers;
+    showingAnswers = false;
+    
+    quizContainer.innerHTML = `
+        <div class="quiz-content">
+            <div class="quiz-header mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Quiz Generated Successfully</h6>
+                        <small class="text-muted">Generated on ${new Date().toLocaleString()}</small>
+                    </div>
+                    <div class="quiz-stats">
+                        <span class="badge bg-primary me-2">${countQuestions(questions)} Questions</span>
+                        <span class="badge bg-secondary">AI Generated</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="quiz-questions">
+                <h6 class="mb-3"><i class="fas fa-list me-2"></i>Questions</h6>
+                <div class="questions-content">
+                    ${formatQuestions(questions)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    quizActions.style.display = 'block';
+}
+
+function formatQuestions(questions) {
+    // Convert markdown-style formatting to HTML
+    return questions
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^\d+\./gm, '<br><strong>$&</strong>')
+        .replace(/^([A-D])\)/gm, '&nbsp;&nbsp;&nbsp;&nbsp;$1)')
+        .trim();
+}
+
+function countQuestions(questions) {
+    return (questions.match(/^\d+\./gm) || []).length;
+}
+
+function showAnswers() {
+    if (showingAnswers) {
+        // Hide answers
+        const questionsContent = document.querySelector('.questions-content');
+        questionsContent.innerHTML = formatQuestions(currentQuestions);
+        document.querySelector('[onclick="showAnswers()"]').innerHTML = '<i class="fas fa-eye me-1"></i>Show Answers';
+        showingAnswers = false;
+    } else {
+        // Show answers
+        const questionsContent = document.querySelector('.questions-content');
+        questionsContent.innerHTML = `
+            <div class="questions-section mb-4">
+                <h6 class="text-primary"><i class="fas fa-question-circle me-2"></i>Questions</h6>
+                ${formatQuestions(currentQuestions)}
+            </div>
+            <div class="answers-section">
+                <h6 class="text-success"><i class="fas fa-check-circle me-2"></i>Answers</h6>
+                ${formatAnswers(currentAnswers)}
+            </div>
+        `;
+        document.querySelector('[onclick="showAnswers()"]').innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Answers';
+        showingAnswers = true;
+    }
+}
+
+function formatAnswers(answers) {
+    return answers
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^\d+\./gm, '<br><strong>$&</strong>')
+        .trim();
+}
+
+function downloadQuiz() {
+    let content = "QUIZ\n";
+    content += "Generated on: " + new Date().toLocaleString() + "\n";
+    content += "="*50 + "\n\n";
+    content += "QUESTIONS:\n";
+    content += currentQuestions + "\n\n";
+    content += "ANSWERS:\n";
+    content += currentAnswers;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quiz_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    showToast('Quiz downloaded successfully!', 'success');
+}
+
+function showError(message) {
+    showToast(message, 'danger');
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close ms-2" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}
