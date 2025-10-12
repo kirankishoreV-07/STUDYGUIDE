@@ -64,7 +64,11 @@ def get_embeddings():
     """Load and cache the HuggingFace embeddings model."""
     global embeddings
     if embeddings is None:
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        embeddings = HuggingFaceEmbeddings(
+            model_name="all-MiniLM-L6-v2",
+            model_kwargs={'device': 'cpu'},  # Force CPU usage to save memory
+            encode_kwargs={'normalize_embeddings': True}
+        )
     return embeddings
 
 
@@ -269,18 +273,24 @@ def chat():
 # ============================================================================
 
 def extract_video_id(url):
-    """Extract YouTube video ID from URL."""
+    """Extract YouTube video ID from URL and convert to standard format."""
     patterns = [
         r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([^&\n?#]+)',
         r'(?:https?://)?(?:www\.)?youtube\.com/embed/([^&\n?#]+)',
-        r'(?:https?://)?(?:www\.)?youtu\.be/([^&\n?#]+)',
+        r'(?:https?://)?(?:www\.)?youtu\.be/([^&\n?#\?]+)',
         r'(?:https?://)?(?:www\.)?youtube\.com/v/([^&\n?#]+)'
     ]
     
     for pattern in patterns:
         match = re.search(pattern, url)
         if match:
-            return match.group(1)
+            video_id = match.group(1)
+            # Clean up any additional parameters
+            if '&' in video_id:
+                video_id = video_id.split('&')[0]
+            if '?' in video_id:
+                video_id = video_id.split('?')[0]
+            return video_id
     return None
 
 def get_youtube_page_info(video_url):
@@ -299,13 +309,46 @@ def get_youtube_page_info(video_url):
         title_tag = soup.find('meta', property='og:title')
         title = title_tag['content'] if title_tag else "Unknown Title"
         
-        # Extract description
+        # Extract description - try multiple methods
+        description = "No description available"
+        
+        # Method 1: og:description
         desc_tag = soup.find('meta', property='og:description')
-        description = desc_tag['content'] if desc_tag else "No description available"
+        if desc_tag and desc_tag.get('content'):
+            description = desc_tag['content']
+        
+        # Method 2: Twitter description
+        if description == "No description available":
+            twitter_desc = soup.find('meta', attrs={'name': 'twitter:description'})
+            if twitter_desc and twitter_desc.get('content'):
+                description = twitter_desc['content']
+        
+        # Method 3: Look for JSON-LD data
+        if description == "No description available":
+            scripts = soup.find_all('script', type='application/ld+json')
+            for script in scripts:
+                try:
+                    data = json.loads(script.string)
+                    if isinstance(data, list):
+                        data = data[0]
+                    if 'description' in data:
+                        description = data['description']
+                        break
+                except:
+                    continue
         
         # Extract channel info
         channel_tag = soup.find('link', {'itemprop': 'name'})
         channel = channel_tag['content'] if channel_tag else "Unknown Channel"
+        
+        # If we still don't have good content, provide a helpful message
+        if len(description) < 50 or description == "No description available":
+            description = f"""This appears to be a YouTube video titled "{title}" from channel "{channel}". 
+            However, I cannot access the full video content or transcript from this URL. 
+            For better summarization, please provide:
+            1. The full YouTube URL (not shortened)
+            2. A transcript of the video
+            3. Or paste the video's description/key points directly"""
         
         return {
             'title': title,
