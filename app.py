@@ -15,11 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.chains.combine_documents.stuff import create_stuff_documents_chain
-from langchain.chains import create_retrieval_chain
-from langchain.prompts import PromptTemplate
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.llms import Ollama
 
 # Summarizer imports
 import requests
@@ -39,9 +35,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = 'studyhub_secret_key_2024'
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+app.secret_key = os.getenv('SECRET_KEY', 'studyhub_secret_key_2024_change_in_production')
+app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 52428800))  # Default 50MB
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -49,7 +45,6 @@ os.makedirs('vector_stores', exist_ok=True)
 
 # Global variables for caching models
 embeddings = None
-llm = None
 gemini_model = None
 
 # Configure Gemini API
@@ -72,12 +67,7 @@ def get_embeddings():
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return embeddings
 
-def get_llm():
-    """Load and cache the Ollama LLM model."""
-    global llm
-    if llm is None:
-        llm = Ollama(model="mistral", temperature=0.3)
-    return llm
+
 
 # ============================================================================
 # ROUTES
@@ -214,15 +204,30 @@ def upload_pdfs():
         logger.error(f"Error processing PDFs: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+def get_relevant_context(retriever, question, max_docs=3):
+    """Get relevant document chunks for the question."""
+    try:
+        docs = retriever.get_relevant_documents(question)
+        # Limit to max_docs and combine the content
+        relevant_docs = docs[:max_docs]
+        context = "\n\n".join([doc.page_content for doc in relevant_docs])
+        return context
+    except Exception as e:
+        logger.error(f"Error retrieving context: {e}")
+        return ""
+
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Handle chat queries."""
+    """Handle chat queries using Gemini."""
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
         
         if not question:
             return jsonify({'success': False, 'error': 'No question provided'})
+        
+        if not gemini_model:
+            return jsonify({'success': False, 'error': 'Gemini API not configured. Please check your API key.'})
         
         if 'session_id' not in session:
             return jsonify({'success': False, 'error': 'No documents uploaded. Please upload PDFs first.'})
@@ -233,24 +238,25 @@ def chat():
         if not retriever:
             return jsonify({'success': False, 'error': 'No documents found. Please upload PDFs first.'})
         
-        # Create conversational chain
-        prompt_template = """
-        Answer based on the provided context. If the query is unrelated to the context, provide a general response from external knowledge sources.
+        # Get relevant context from the documents
+        context = get_relevant_context(retriever, question)
         
-        Context: {context}
+        # Create prompt for Gemini
+        prompt = f"""
+        You are a helpful assistant that answers questions based on the provided document context. 
+        Use the context to answer the question accurately. If the question cannot be answered from the context, 
+        say so and provide a general response based on your knowledge.
         
-        Question: {input}
+        Context from documents:
+        {context}
+        
+        Question: {question}
         
         Answer:"""
         
-        llm_model = get_llm()
-        prompt = PromptTemplate.from_template(prompt_template)
-        document_chain = create_stuff_documents_chain(llm_model, prompt)
-        retrieval_chain = create_retrieval_chain(retriever, document_chain)
-        
-        # Get response
-        response = retrieval_chain.invoke({"input": question})
-        answer = response.get('answer', 'Sorry, I could not generate an answer.')
+        # Get response from Gemini
+        response = gemini_model.generate_content(prompt)
+        answer = response.text if response.text else 'Sorry, I could not generate an answer.'
         
         return jsonify({'success': True, 'answer': answer})
         
@@ -284,7 +290,7 @@ def get_youtube_page_info(video_url):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
-        response = requests.get(video_url, headers=headers, timeout=10)
+        response = requests.get(video_url, headers=headers, timeout=int(os.getenv('REQUEST_TIMEOUT', 10)))
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -318,7 +324,7 @@ def get_webpage_content(url):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
-        response = requests.get(url, headers=headers, timeout=15)
+        response = requests.get(url, headers=headers, timeout=int(os.getenv('REQUEST_TIMEOUT', 15)))
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -550,7 +556,6 @@ def api_status():
     """Return API status information."""
     status = {
         'gemini_api': gemini_model is not None,
-        'ollama_available': True,  # We'll assume it's available
         'embeddings_loaded': embeddings is not None,
         'timestamp': datetime.now().isoformat()
     }
@@ -578,4 +583,9 @@ if __name__ == '__main__':
             logger.error(f"❌ Gemini API test failed: {e}")
     
     logger.info("Starting StudyHub unified application...")
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    
+    # Get port from environment (for GCP) or default to 8080
+    port = int(os.environ.get('PORT', 8080))
+    debug = os.environ.get('FLASK_ENV', 'development') == 'development'
+    
+    app.run(debug=debug, host='0.0.0.0', port=port)
