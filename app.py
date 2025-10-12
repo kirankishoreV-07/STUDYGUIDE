@@ -57,6 +57,9 @@ gemini_model = None
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'models/gemini-2.5-flash')
 
+# Configure YouTube API (optional - for better YouTube support)
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+
 if GEMINI_API_KEY:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
@@ -331,6 +334,37 @@ def extract_video_id(url):
             return video_id
     return None
 
+def get_youtube_video_info_via_api(video_id):
+    """Get YouTube video info using YouTube Data API v3 - 100% reliable."""
+    if not YOUTUBE_API_KEY:
+        return None
+        
+    try:
+        # YouTube Data API v3 endpoint
+        url = f"https://www.googleapis.com/youtube/v3/videos"
+        params = {
+            'part': 'snippet,statistics',
+            'id': video_id,
+            'key': YOUTUBE_API_KEY
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data['items']:
+            video = data['items'][0]['snippet']
+            return {
+                'title': video.get('title', 'Unknown Title'),
+                'description': video.get('description', 'No description available'),
+                'channel': video.get('channelTitle', 'Unknown Channel'),
+                'published': video.get('publishedAt', ''),
+                'tags': video.get('tags', [])
+            }
+    except Exception as e:
+        logger.error(f"YouTube API error: {e}")
+        return None
+
 def get_youtube_page_info(video_url):
     """Get YouTube video information by scraping the video page."""
     try:
@@ -379,14 +413,21 @@ def get_youtube_page_info(video_url):
         channel_tag = soup.find('link', {'itemprop': 'name'})
         channel = channel_tag['content'] if channel_tag else "Unknown Channel"
         
-        # If we still don't have good content, provide a helpful message
+        # If we still don't have good content, try to provide something useful
         if len(description) < 50 or description == "No description available":
-            description = f"""This appears to be a YouTube video titled "{title}" from channel "{channel}". 
-            However, I cannot access the full video content or transcript from this URL. 
-            For better summarization, please provide:
-            1. The full YouTube URL (not shortened)
-            2. A transcript of the video
-            3. Or paste the video's description/key points directly"""
+            # At least provide what we know about the video
+            description = f"""Video Title: {title}
+Channel: {channel}
+URL: {video_url}
+
+Note: I was unable to extract detailed content from this YouTube video. This could be due to:
+- Privacy settings on the video
+- Region restrictions
+- YouTube's anti-scraping measures
+
+For better summarization, please try:
+1. Using the full YouTube URL: https://www.youtube.com/watch?v=[VIDEO_ID]
+2. Or use the 'Text Content' option and paste the video description/transcript directly"""
         
         return {
             'title': title,
@@ -479,14 +520,56 @@ def summarize_content():
         if content_type == 'youtube':
             video_id = extract_video_id(content_input)
             if not video_id:
-                return jsonify({'success': False, 'error': 'Invalid YouTube URL'})
+                return jsonify({'success': False, 'error': 'Invalid YouTube URL. Please use format: https://www.youtube.com/watch?v=VIDEO_ID'})
             
-            video_info = get_youtube_page_info(content_input)
-            if video_info:
-                content_text = f"Title: {video_info['title']}\nChannel: {video_info['channel']}\nDescription: {video_info['description']}"
+            # Try YouTube API first (100% reliable if API key is set)
+            video_info = None
+            if YOUTUBE_API_KEY:
+                video_info = get_youtube_video_info_via_api(video_id)
+            
+            # Fallback to web scraping if API not available
+            if not video_info:
+                video_info = get_youtube_page_info(content_input)
+            
+            # Check if we got meaningful content
+            if (video_info and 
+                video_info['title'] != "Unknown Title" and 
+                video_info['description'] and
+                video_info['description'] != "No description available" and
+                len(video_info['description']) > 50):
+                
+                # Create comprehensive content for summarization
+                content_text = f"""Video Title: {video_info['title']}
+Channel: {video_info['channel']}
+Description: {video_info['description']}"""
+                
+                # Add tags if available (from API)
+                if 'tags' in video_info and video_info['tags']:
+                    content_text += f"\nTags: {', '.join(video_info['tags'][:10])}"
+                
                 result = process_with_gemini(content_text, "YouTube video", summarize)
             else:
-                return jsonify({'success': False, 'error': 'Could not extract video information'})
+                # Provide helpful guidance for manual input
+                result = f"""🎥 **YouTube Video Summarization Help**
+
+I couldn't automatically extract sufficient content from this YouTube video. For the best results, please:
+
+**Option 1: Use Video Transcript (Recommended)**
+1. Go to your YouTube video
+2. Click "Show transcript" below the video
+3. Copy the transcript text
+4. Use "Text Content" option and paste it here
+
+**Option 2: Use Video Description**
+1. Copy the detailed description from the YouTube video
+2. Use "Text Content" option and paste it here
+
+**Option 3: Manual Summary Request**
+Provide key points about the video content using "Text Content"
+
+This approach gives much better and more accurate summaries! 🚀
+
+**Need a YouTube API key for automatic processing? Contact your administrator.**"""
                 
         elif content_type == 'webpage':
             content_text = get_webpage_content(content_input)
