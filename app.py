@@ -39,9 +39,15 @@ app.secret_key = os.getenv('SECRET_KEY', 'studyhub_secret_key_2024_change_in_pro
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 52428800))  # Default 50MB
 
-# Ensure upload directory exists
+# Ensure upload directory exists (use /tmp for Cloud Run)
+if os.getenv('FLASK_ENV') == 'production':
+    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
+    vector_store_base = '/tmp/vector_stores'
+else:
+    vector_store_base = 'vector_stores'
+
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs('vector_stores', exist_ok=True)
+os.makedirs(vector_store_base, exist_ok=True)
 
 # Global variables for caching models
 embeddings = None
@@ -61,14 +67,21 @@ if GEMINI_API_KEY:
         gemini_model = None
 
 def get_embeddings():
-    """Load and cache the HuggingFace embeddings model."""
+    """Load and cache the HuggingFace embeddings model with memory optimization."""
     global embeddings
     if embeddings is None:
-        embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2",
-            model_kwargs={'device': 'cpu'},  # Force CPU usage to save memory
-            encode_kwargs={'normalize_embeddings': True}
-        )
+        try:
+            # Use a smaller, more memory-efficient model for Cloud Run
+            embeddings = HuggingFaceEmbeddings(
+                model_name="all-MiniLM-L6-v2",
+                model_kwargs={'device': 'cpu'},
+                encode_kwargs={'normalize_embeddings': True, 'batch_size': 1}
+            )
+            logger.info("✅ Embeddings model loaded successfully")
+        except Exception as e:
+            logger.error(f"❌ Error loading embeddings: {e}")
+            # Fallback to basic embeddings if needed
+            embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return embeddings
 
 
@@ -114,33 +127,58 @@ def extract_text_from_pdfs(pdf_files):
     return text
 
 def get_text_chunks(text):
-    """Split text into chunks for processing."""
+    """Split text into chunks for processing with memory optimization."""
+    # Use smaller chunks for better memory management in Cloud Run
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
+        chunk_size=800,  # Reduced from 1000
+        chunk_overlap=100  # Reduced from 200
     )
     chunks = text_splitter.split_text(text)
+    logger.info(f"✅ Text split into {len(chunks)} chunks")
     return chunks
 
 def create_vector_store(text_chunks, session_id):
-    """Create FAISS vector store from text chunks."""
+    """Create FAISS vector store from text chunks with memory optimization."""
     try:
         embeddings_model = get_embeddings()
-        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings_model)
         
-        # Save vector store for session
-        vector_store_path = f"vector_stores/session_{session_id}"
+        # Process in smaller batches to reduce memory usage
+        batch_size = 10
+        all_vectors = []
+        
+        for i in range(0, len(text_chunks), batch_size):
+            batch = text_chunks[i:i + batch_size]
+            logger.info(f"Processing batch {i//batch_size + 1}/{(len(text_chunks)-1)//batch_size + 1}")
+            
+            if not all_vectors:
+                # Create initial vector store with first batch
+                vector_store = FAISS.from_texts(batch, embedding=embeddings_model)
+            else:
+                # Add subsequent batches to existing store
+                batch_store = FAISS.from_texts(batch, embedding=embeddings_model)
+                vector_store.merge_from(batch_store)
+        
+        # Save vector store for session (use /tmp in production)
+        if os.getenv('FLASK_ENV') == 'production':
+            vector_store_path = f"/tmp/vector_stores/session_{session_id}"
+        else:
+            vector_store_path = f"vector_stores/session_{session_id}"
+        os.makedirs(os.path.dirname(vector_store_path), exist_ok=True)
         vector_store.save_local(vector_store_path)
         
+        logger.info(f"✅ Vector store created successfully with {len(text_chunks)} chunks")
         return True
     except Exception as e:
-        logger.error(f"Error creating vector store: {e}")
+        logger.error(f"❌ Error creating vector store: {e}")
         return False
 
 def get_vector_store(session_id):
     """Load vector store for session."""
     try:
-        vector_store_path = f"vector_stores/session_{session_id}"
+        if os.getenv('FLASK_ENV') == 'production':
+            vector_store_path = f"/tmp/vector_stores/session_{session_id}"
+        else:
+            vector_store_path = f"vector_stores/session_{session_id}"
         if os.path.exists(vector_store_path):
             embeddings_model = get_embeddings()
             vector_store = FAISS.load_local(
